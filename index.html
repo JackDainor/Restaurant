@@ -1,6 +1,6 @@
 <!-- GitHub write access verified -->
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Restaurante</title><link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#ea580c"><link rel="icon" href="/icon-192.png">
+<title>Restaurante</title><link rel="manifest" href="/manifest.json"><meta name="theme-color" content="#ea580c"><meta name="description" content="Consulta nuestro menú, horarios, ubicación y realiza tu pedido en línea."><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="icon" href="/icon-192.png">
 <style>
 :root{--o:#ea580c;--bg:#fff7ed;--c:#fff;--t:#1c1917;--m:#78716c;--b:#e7e5e4}
 @media(prefers-color-scheme:dark){:root{--bg:#1c1917;--c:#292524;--t:#fafaf9;--m:#a8a29e;--b:#44403c}}
@@ -9,7 +9,7 @@
 .ban{height:200px;background:#444 center/cover}.hd{background:var(--c);margin:-40px 14px 0;border-radius:20px;padding:46px 16px 14px;text-align:center;position:relative;max-width:972px;margin-inline:auto}
 .logo{width:76px;height:76px;border-radius:50%;background:var(--o) center/cover;border:4px solid var(--c);position:absolute;top:-38px;left:calc(50% - 38px)}
 h1{margin:0;font-size:22px}.info{color:var(--m);font-size:14px;margin-top:6px}.ok{color:#16a34a;font-weight:700}.no{color:#dc2626;font-weight:700}
-.cats{display:flex;gap:8px;overflow:auto;padding:14px 0;position:sticky;top:0;background:var(--bg);z-index:5}
+.infoCards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0}.infoCard{background:var(--c);border:1px solid var(--b);border-radius:14px;padding:12px;min-width:0}.infoCard b{display:block;font-size:11px;color:var(--o);margin-bottom:5px}.infoCard span{display:block;font-size:12px;line-height:1.35;overflow-wrap:anywhere}.tools{display:flex;gap:8px;margin:12px 0}.tools input{margin:0;min-width:0}.tools button{border:1px solid var(--b);border-radius:10px;background:var(--c);color:var(--t);padding:0 12px;white-space:nowrap}.netInfo{font-size:12px;color:var(--m);margin:4px 0 10px}@media(max-width:420px){.infoCards{gap:6px}.infoCard{padding:9px 7px}.infoCard span{font-size:11px}}.cats{display:flex;gap:8px;overflow:auto;padding:14px 0;position:sticky;top:0;background:var(--bg);z-index:5}
 .cats button{white-space:nowrap;border:1px solid var(--b);background:var(--c);color:var(--t);padding:8px 14px;border-radius:99px;cursor:pointer}.cats .on{background:var(--o);color:#fff;border-color:var(--o)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
 .d{background:var(--c);border-radius:16px;display:flex;gap:10px;padding:10px;border:1px solid var(--b)}
@@ -30,22 +30,22 @@ input,select{width:100%;padding:12px;margin:5px 0;border:1px solid var(--b);bord
 </style></head><body>
 <div class="ban" id="ban"></div>
 <div class="hd"><div class="logo" id="logo"></div><h1 id="nm">…</h1><div class="info" id="inf"></div></div>
-<div class="wrap"><div class="cats" id="cats"></div><div class="grid" id="grid"></div></div>
-<a class="fab" id="wa" target="_blank" rel="noopener" aria-label="WhatsApp">💬</a>
+<div class="wrap"><section class="infoCards" aria-label="Información del restaurante"><div class="infoCard"><b>🕒 HORARIO</b><span id="hoursInfo">Consulta nuestros horarios</span></div><div class="infoCard"><b>📍 UBICACIÓN</b><span id="addressInfo">Ubicación por confirmar</span></div><div class="infoCard"><b>🛵 DELIVERY</b><span id="deliveryInfo">Consulta disponibilidad</span></div></section><div class="tools"><input id="search" type="search" placeholder="Buscar platos..." aria-label="Buscar platos"><button id="installBtn" hidden type="button">＋ Instalar</button></div><div class="netInfo" id="netInfo">Menú disponible al conectarte a internet</div><div class="cats" id="cats"></div><div class="grid" id="grid"></div></div>
+<a class="fab" id="wa" target="_blank" rel="noopener" aria-label="Abrir WhatsApp"><svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M16 3.1A12.8 12.8 0 0 0 5.1 22.6L3.4 29l6.6-1.7A12.9 12.9 0 1 0 16 3.1Zm0 23.5c-2 0-3.9-.5-5.6-1.5l-.4-.2-3.9 1 1-3.8-.3-.4a10.5 10.5 0 1 1 9.2 4.9Zm5.8-7.9c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-1 1.2-.2.2-.4.2-.7.1-.3-.2-1.3-.5-2.5-1.6-.9-.8-1.6-1.8-1.8-2.2-.2-.3 0-.5.2-.7l.5-.5c.2-.2.2-.4.3-.5.1-.2 0-.4 0-.6l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.1 1.1-1.1 2.6s1.1 3 1.3 3.2c.1.2 2.2 3.4 5.4 4.8.8.3 1.4.5 1.9.7.8.2 1.5.2 2 .1.6-.1 1.8-.8 2.1-1.5.3-.7.3-1.3.2-1.5-.1-.1-.3-.2-.6-.4Z"/></svg></a>
 <button class="bar" id="bar" style="display:none" onclick="openCart()"><span id="bn">🛒 0</span><span id="bt"></span></button>
 <div class="md" id="md" onclick="if(event.target==this)this.classList.remove('on')"><div class="box" id="box"></div></div>
 <script>
 const $=s=>document.querySelector(s),R=n=>'R$ '+Number(n).toFixed(2).replace('.',','),E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let M=[],S={},C=JSON.parse(localStorage.c||'{}'),cat='Todos',T='delivery',P='pix';
+let M=[],S={},C=JSON.parse(localStorage.c||'{}'),cat='Todos',T='delivery',P='pix',searchTerm='',installPrompt=null,sending=false;
 const save=()=>{localStorage.c=JSON.stringify(C);bar()};
 async function load(){const r=await(await fetch('/api/api?a=menu')).json();M=r.dishes;S=r.s;
 document.title=S.name;$('#nm').textContent=S.name;$('#ban').style.backgroundImage=S.banner?`url("${S.banner}")`:'linear-gradient(135deg,#ea580c,#f59e0b)';
 if(S.logo)$('#logo').style.backgroundImage=`url("${S.logo}")`;
-$('#inf').innerHTML=(S.open=='1'?'<span class="ok">Abierto</span>':'<span class="no">Cerrado</span>')+` • ${E(S.hours)} • Mínimo ${R(S.min)}`;
+$('#inf').innerHTML=(S.open=='1'?'<span class="ok">Abierto</span>':'<span class="no">Cerrado</span>')+` • ${E(S.hours)} • Mínimo ${R(S.min)}`;$('#hoursInfo').textContent=S.hours||'Consulta nuestros horarios';$('#addressInfo').textContent=S.address||'Ubicación por confirmar';$('#deliveryInfo').textContent=S.delivery==='0'?'No disponible':(S.deliveryText||'Entrega disponible');
 $('#wa').href='https://wa.me/'+S.whatsapp.replace(/\D/g,'');render()}
 function render(){const cs=['Todos',...new Set(M.map(d=>d.cat))];
 $('#cats').innerHTML=cs.map(c=>`<button class="${c==cat?'on':''}" onclick="cat='${E(c).replace(/'/g,'')}';render()">${E(c)}</button>`).join('');
-$('#grid').innerHTML=M.filter(d=>cat=='Todos'||d.cat==cat).map(d=>`<div class="d"><div class="im" style="${d.img?`background-image:url('${E(d.img)}')`:''}"></div><div style="flex:1"><h3>${E(d.name)}</h3><p>${E(d.descr)}</p><div class="r"><span>${R(d.price)}</span><button class="add" onclick="add(${d.id},1)">+</button></div></div></div>`).join('')||'<p>Aún no hay platos.</p>';bar()}
+$('#grid').innerHTML=M.filter(d=>(cat=='Todos'||d.cat==cat)&&((d.name+' '+(d.descr||'')+' '+(d.cat||'')).toLowerCase().includes(searchTerm))).map(d=>`<div class="d"><div class="im" style="${d.img?`background-image:url('${E(d.img)}')`:''}"></div><div style="flex:1"><h3>${E(d.name)}</h3><p>${E(d.descr)}</p><div class="r"><span>${R(d.price)}</span><button class="add" onclick="add(${d.id},1)">+</button></div></div></div>`).join('')||'<p>Aún no hay platos.</p>';bar()}
 const add=(i,n)=>{C[i]=(C[i]||0)+n;if(C[i]<=0)delete C[i];save();if($('#md').classList.contains('on'))openCart()};
 const lines=()=>Object.entries(C).map(([i,q])=>({d:M.find(x=>x.id==i),q})).filter(x=>x.d);
 const sub=()=>lines().reduce((a,l)=>a+l.d.price*l.q,0),cnt=()=>lines().reduce((a,l)=>a+l.q,0);
@@ -61,12 +61,11 @@ ${T=='delivery'?'<input id="fa" placeholder="Dirección completa" value="'+E(loc
 <div class="tot" style="margin-top:10px"><span>Subtotal</span><span>${R(sub())}</span></div>${fee?`<div class="tot"><span>Delivery</span><span>${R(fee)}</span></div>`:''}
 <div class="tot big"><span>Total</span><span>${R(sub()+fee)}</span></div><button class="go" onclick="send()">Confirmar pedido</button>`;
 $('#md').classList.add('on')}
-async function send(){const g=i=>$(i)?.value.trim()||'';const name=g('#fn'),phone=g('#fp'),address=g('#fa'),table=g('#ft');
+async function send(){if(sending)return;const g=i=>$(i)?.value.trim()||'';const name=g('#fn'),phone=g('#fp'),address=g('#fa'),table=g('#ft');
 if(!name||!phone)return alert('Completa nombre y teléfono');localStorage.n=name;localStorage.p=phone;if(address)localStorage.a=address;
 const body={name,phone,address,table,type:T,pay:P,items:lines().map(l=>({id:l.d.id,q:l.q}))};
-const r=await fetch('/api/api?a=order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();
-if(!r.ok)return alert(j.error);
+const btn=$('.go');sending=true;if(btn){btn.disabled=true;btn.textContent='Enviando pedido…'}let r,j;try{r=await fetch('/api/api?a=order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});j=await r.json()}catch(e){sending=false;if(btn){btn.disabled=false;btn.textContent='Confirmar pedido'}return alert('No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.')}if(!r.ok){sending=false;if(btn){btn.disabled=false;btn.textContent='Confirmar pedido'}return alert(j.error||'No se pudo enviar el pedido')}
 const txt=`Hola! Pedido #${j.id}\n`+lines().map(l=>`${l.q}x ${l.d.name}`).join('\n')+`\nTotal: ${R(j.total)}\nTipo: ${T}\nPago: ${P}\n${name}`;
-C={};save();$('#box').innerHTML=`<h2>✅ ¡Pedido #${j.id} enviado!</h2><p>Total ${R(j.total)}. El restaurante ya lo recibió.</p><a class="go" style="display:block;text-align:center;text-decoration:none" target="_blank" href="https://wa.me/${S.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(txt)}">Enviar resumen por WhatsApp</a><button class="go" style="background:#78716c" onclick="$('#md').classList.remove('on')">Cerrar</button>`}
-if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js');load();
+sending=false;C={};save();$('#box').innerHTML=`<h2>✅ ¡Pedido #${j.id} enviado!</h2><p>Total ${R(j.total)}. El restaurante ya lo recibió.</p><a class="go" style="display:block;text-align:center;text-decoration:none" target="_blank" href="https://wa.me/${S.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(txt)}">Enviar resumen por WhatsApp</a><button class="go" style="background:#78716c" onclick="$('#md').classList.remove('on')">Cerrar</button>`}
+if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});$('#search').addEventListener('input',e=>{searchTerm=e.target.value.toLowerCase().trim();render()});window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('#installBtn').hidden=false});$('#installBtn').addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('#installBtn').hidden=true});window.addEventListener('appinstalled',()=>$('#installBtn').hidden=true);window.addEventListener('offline',()=>$('#netInfo').textContent='Sin conexión: el menú guardado puede seguir disponible; los pedidos requieren internet');window.addEventListener('online',()=>$('#netInfo').textContent='Conexión recuperada');load().catch(()=>{$('#nm').textContent='Restaurante';$('#grid').innerHTML='<p>No se pudo cargar el menú. Comprueba tu conexión.</p>'});
 </script></body></html>
