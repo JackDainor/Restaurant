@@ -50,9 +50,11 @@ export default async function handler(req, res) {
     if (a === 'login') return res.json({ ok: true });
     if (a === 'orders') return res.json(await sql`select * from orders order by id desc limit 100`);
     if (a === 'history') {
-      const start = new Date(String(req.query.start || '')).toISOString();
-      const end = new Date(String(req.query.end || '')).toISOString();
-      if (!Number.isFinite(Date.parse(start)) || !Number.isFinite(Date.parse(end))) return res.status(400).json({ error: 'Mes inválido' });
+      const startDate = new Date(String(req.query.start || ''));
+      const endDate = new Date(String(req.query.end || ''));
+      if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime()) || endDate <= startDate) return res.status(400).json({ error: 'Mes inválido' });
+      const start = startDate.toISOString();
+      const end = endDate.toISOString();
       return res.json(await sql`select * from orders where created >= ${start}::timestamptz and created < ${end}::timestamptz order by created desc`);
     }
     if (a === 'status') { await sql`update orders set status=${b.status} where id=${+b.id}`; return res.json({ ok: 1 }); }
