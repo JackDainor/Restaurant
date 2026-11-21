@@ -12,6 +12,8 @@ const init = () => (ready ||= (async () => {
   await sql`alter table orders add column if not exists courier_id integer`;
   await sql`alter table orders add column if not exists courier_fee numeric(10,2) default 0`;
   await sql`alter table orders add column if not exists courier_paid boolean default false`;
+  await sql`alter table orders add column if not exists delivery_lat numeric(10,7)`;
+  await sql`alter table orders add column if not exists delivery_lng numeric(10,7)`;
   await sql`create table if not exists couriers(id serial primary key,name text not null,phone text not null,vehicle text default 'Moto',plate text default '',active boolean default true,created timestamptz default now())`;
 })());
 const DEF = { name: 'Mi Restaurante', whatsapp: '', fee: '5', min: '30', banner: '', logo: '', pix_key: '', pix_qr: '', open: '1', hours: 'Abierto hoy', delivery: '1', address: '', deliveryText: 'Entrega disponible', categories: 'Platos,Bebidas' };
@@ -74,7 +76,7 @@ export default async function handler(req, res) {
         promoCode = promo.code;
       }
       const addr = b.type === 'local' ? 'Mesa ' + (b.table || '?') : b.address || '';
-      const [o] = await sql`insert into orders(name,phone,type,address,pay,items,total,fee,promo_code,discount) values(${String(b.name).slice(0, 80)},${String(b.phone).slice(0, 30)},${b.type},${String(addr).slice(0, 250)},${String(b.pay || 'pix').slice(0, 20)},${JSON.stringify(items)},${sub - discount + fee},${fee},${promoCode},${discount}) returning id,total,discount,promo_code`;
+      const [o] = await sql`insert into orders(name,phone,type,address,pay,items,total,fee,promo_code,discount,delivery_lat,delivery_lng) values(${String(b.name).slice(0, 80)},${String(b.phone).slice(0, 30)},${b.type},${String(addr).slice(0, 250)},${String(b.pay || 'pix').slice(0, 20)},${JSON.stringify(items)},${sub - discount + fee},${fee},${promoCode},${discount},${b.type==='delivery'&&Number.isFinite(Number(b.lat))?Number(b.lat):null},${b.type==='delivery'&&Number.isFinite(Number(b.lng))?Number(b.lng):null}) returning id,total,discount,promo_code`;
       return res.json(o);
     }
     if (a === 'checkpromo' && req.method === 'POST') {
