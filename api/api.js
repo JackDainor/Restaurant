@@ -8,8 +8,9 @@ const init = () => (ready ||= (async () => {
   await sql`create table if not exists promotions(id serial primary key,code text unique not null,title text default '',kind text not null,value numeric(10,2) not null,min_total numeric(10,2) default 0,starts_at timestamptz,ends_at timestamptz,active boolean default true,created timestamptz default now())`;
   await sql`alter table orders add column if not exists promo_code text default ''`;
   await sql`alter table orders add column if not exists discount numeric(10,2) default 0`;
+  await sql`alter table orders add column if not exists updated_at timestamptz default now()`;
 })());
-const DEF = { name: 'Mi Restaurante', whatsapp: '', fee: '5', min: '30', banner: '', logo: '', open: '1', hours: 'Abierto hoy', delivery: '1', address: '', deliveryText: 'Entrega disponible', categories: 'Platos,Bebidas' };
+const DEF = { name: 'Mi Restaurante', whatsapp: '', fee: '5', min: '30', banner: '', logo: '', pix_key: '', pix_qr: '', open: '1', hours: 'Abierto hoy', delivery: '1', address: '', deliveryText: 'Entrega disponible', categories: 'Platos,Bebidas' };
 const settings = async () => {
   const r = await sql`select k,v from settings`;
   return { ...DEF, ...Object.fromEntries(r.map(x => [x.k, x.v])) };
@@ -20,6 +21,13 @@ export default async function handler(req, res) {
     const a = req.query.a, b = req.body || {};
     const admin = !!process.env.ADMIN_PASSWORD && req.headers['x-admin'] === process.env.ADMIN_PASSWORD;
     const deny = () => res.status(401).json({ error: 'No autorizado' });
+    if (a === 'track') {
+      const id = Number(req.query.id), phone = String(req.query.phone || '').replace(/\\D/g, '');
+      if (!Number.isInteger(id) || id < 1 || phone.length < 8) return res.status(400).json({error:'Número de pedido o WhatsApp inválido'});
+      const [o] = await sql`select id,status,created,updated_at,type,total from orders where id=${id} and regexp_replace(phone,'[^0-9]','','g')=${phone} limit 1`;
+      if (!o) return res.status(404).json({error:'No encontramos ese pedido con ese WhatsApp'});
+      return res.json(o);
+    }
     if (a === 'menu') {
       const dishes = admin ? await sql`select * from dishes order by cat,id` : await sql`select * from dishes where active order by cat,id`;
       return res.json({ dishes, s: await settings() });
@@ -82,7 +90,7 @@ export default async function handler(req, res) {
     if (a === 'status') {
       const allowed = ['nuevo','confirmado','preparando','listo','en camino','entregado','cancelado'];
       if (!Number.isInteger(+b.id) || +b.id < 1 || !allowed.includes(b.status)) return res.status(400).json({ error: 'Estado o pedido inválido' });
-      const rows = await sql`update orders set status=${b.status} where id=${+b.id} returning id,status`;
+      const rows = await sql`update orders set status=${b.status},updated_at=now() where id=${+b.id} returning id,status,updated_at`;
       if (!rows.length) return res.status(404).json({ error: 'Pedido no encontrado' });
       return res.json({ ok: 1, order: rows[0] });
     }
