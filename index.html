@@ -152,17 +152,33 @@ const btn=$('.go');sending=true;if(btn){btn.disabled=true;btn.textContent='Envia
 localStorage.lastOrderId=String(j.id);localStorage.lastOrderPhone=phone;const txt=`Hola! Pedido #${j.id}\n`+lines().map(l=>`${l.q}x ${l.d.name}`).join('\n')+`\nTotal: ${R(j.total)}\nTipo: ${T}\nPago: ${P}\n${name}`;
 sending=false;C={};appliedPromo=null;save();showToast('✅ Pedido #'+j.id+' enviado correctamente','success');$('#box').innerHTML=`<h2>✅ ¡Pedido #${j.id} enviado!</h2><p>Total ${R(j.total)}. El restaurante ya lo recibió.</p>${P==='pix'?(S.pix_qr?`<img src="${E(S.pix_qr)}" alt="QR Pix" style="display:block;width:min(220px,100%);margin:12px auto;background:#fff;padding:8px;border-radius:12px">`:'' )+(S.pix_key?`<p style="text-align:center;overflow-wrap:anywhere"><b>Llave Pix:</b> ${E(S.pix_key)} <button class="smallbtn" onclick="copyPixKey()">Copiar</button></p>`:''):''}<button class="go" onclick="showTracking(${j.id},${JSON.stringify(phone)})">📦 Seguir mi pedido</button><a class="go" style="display:block;text-align:center;text-decoration:none" target="_blank" href="https://wa.me/${S.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(txt)}">Enviar resumen por WhatsApp</a><button class="go" style="background:#78716c" onclick="$('#md').classList.remove('on')">Cerrar</button>`}
 
-async function showTracking(id=localStorage.lastOrderId||'',phone=localStorage.lastOrderPhone||''){
- $('#box').innerHTML=`<h2>📦 Seguimiento del pedido</h2><p class="help">Ingresa el número de pedido y el WhatsApp utilizado al comprar.</p><input id="trackId" inputmode="numeric" placeholder="Número de pedido" value="${E(id)}"><input id="trackPhone" inputmode="tel" placeholder="WhatsApp / teléfono" value="${E(phone)}"><button class="go" onclick="lookupOrder()">Consultar pedido</button><div id="trackResult"></div><button class="smallbtn" style="width:100%;margin-top:10px" onclick="$('#md').classList.remove('on')">Cerrar</button>`;
- $('#md').classList.add('on');if(id&&phone)lookupOrder();
+async function showTracking(){
+ const phone=localStorage.lastOrderPhone||localStorage.p||'';
+ $('#box').innerHTML=`<div class="cartHeader"><h2>📦 Mis pedidos</h2><button class="closeCart" type="button" aria-label="Cerrar" onclick="closeModal()">×</button></div><div id="myOrders"><p class="help">Cargando tus pedidos…</p></div>`;
+ $('#md').classList.add('on');
+ if(!phone){$('#myOrders').innerHTML='<p class="help">Todavía no hay pedidos guardados en este dispositivo. Cuando realices un pedido, aparecerá aquí automáticamente.</p>';return}
+ try{
+  const r=await fetch('/api/api?a=myorders&phone='+encodeURIComponent(phone)),orders=await r.json();
+  if(!r.ok)throw Error(orders.error||'No se pudieron cargar los pedidos');
+  if(!orders.length){$('#myOrders').innerHTML='<p class="help">Todavía no tienes pedidos registrados con este WhatsApp.</p>';return}
+  $('#myOrders').innerHTML=orders.map(o=>{
+   let items=[];try{items=typeof o.items==='string'?JSON.parse(o.items):o.items||[]}catch(e){}
+   const names=items.map(x=>(x.q||x.quantity||1)+' × '+E(x.name||x.title||('Producto '+(x.id||'')))).join(', ');
+   return `<div style="padding:14px;margin:10px 0;border:1px solid var(--line);border-radius:15px;background:#24211f"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><b>Pedido #${o.id}</b><b style="color:#fdba74">${R(o.total)}</b></div><p class="help" style="margin:7px 0">${E(names||'Detalle del pedido')}<br>${new Date(o.created).toLocaleString()} · ${E(o.type||'')}</p><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:12px;color:#86efac;font-weight:800">${E(o.status||'nuevo').toUpperCase()}</span><button class="smallbtn" onclick="lookupOrder(${o.id})">Seguir pedido</button></div></div>`;
+  }).join('');
+ }catch(e){$('#myOrders').innerHTML='<p style="color:#fca5a5">'+E(e.message)+'</p>'}
 }
-async function lookupOrder(){
- const id=$('#trackId')?.value.trim(),phone=$('#trackPhone')?.value.trim(),out=$('#trackResult');if(!id||!phone){showToast('Completa el número y WhatsApp','error');return}
- out.innerHTML='<p class="help">Consultando estado…</p>';
- try{const r=await fetch('/api/api?a=track&id='+encodeURIComponent(id)+'&phone='+encodeURIComponent(phone));const o=await r.json();if(!r.ok)throw Error(o.error||'No se pudo consultar');
- const steps=['nuevo','confirmado','preparando','listo','en camino','entregado'],labels=['Pedido recibido','Pedido confirmado','En preparación','Listo para retirar','En camino','Entregado'],pos=steps.indexOf(o.status);
- out.innerHTML='<div style="margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:14px"><b>Pedido #'+o.id+'</b><p class="help">Última actualización: '+new Date(o.updated_at||o.created).toLocaleString()+'</p>'+(o.status==='cancelado'?'<p style="color:#fca5a5;font-weight:800">Este pedido fue cancelado.</p>':'<div style="margin-top:14px">'+steps.map((s,i)=>'<div style="display:flex;gap:10px;align-items:center;padding:8px 0;color:'+(i<=pos?'#86efac':'#a8a29e')+'"><span style="font-size:18px">'+(i<=pos?'●':'○')+'</span><b>'+labels[i]+'</b></div>').join('')+'</div>')+'<div class="tot"><span>Total</span><b>'+R(o.total)+'</b></div></div>';
- }catch(e){out.innerHTML='<p style="color:#fca5a5;font-size:13px">'+E(e.message)+'</p>'}
+async function lookupOrder(id){
+ const phone=localStorage.lastOrderPhone||localStorage.p||'';
+ const out=$('#myOrders');if(!id||!phone)return;
+ out.innerHTML='<p class="help">Consultando pedido…</p>';
+ try{
+  const r=await fetch('/api/api?a=track&id='+encodeURIComponent(id)+'&phone='+encodeURIComponent(phone)),o=await r.json();
+  if(!r.ok)throw Error(o.error||'No se pudo consultar');
+  let items=[];try{items=typeof o.items==='string'?JSON.parse(o.items):o.items||[]}catch(e){}
+  const steps=['nuevo','confirmado','preparando','listo','en camino','entregado'],labels=['Pedido recibido','Pedido confirmado','En preparación','Listo para retirar','En camino','Entregado'],pos=steps.indexOf(o.status);
+  out.innerHTML=`<button class="smallbtn" onclick="showTracking()" style="margin-bottom:12px">← Volver a mis pedidos</button><div style="padding:15px;border:1px solid var(--line);border-radius:15px;background:#24211f"><h3 style="margin:0 0 8px">Seguimiento #${o.id}</h3><p class="help">${new Date(o.updated_at||o.created).toLocaleString()}</p><b>Productos</b>${items.map(x=>'<div class="ln"><span>'+E(x.name||x.title||('Producto '+(x.id||'')))+'</span><b>× '+(x.q||x.quantity||1)+'</b></div>').join('')}<div style="margin-top:14px">${o.status==='cancelado'?'<p style="color:#fca5a5;font-weight:800">Este pedido fue cancelado.</p>':steps.map((s,i)=>'<div style="display:flex;gap:10px;align-items:center;padding:8px 0;color:'+(i<=pos?'#86efac':'#a8a29e')+'"><span style="font-size:18px">'+(i<=pos?'●':'○')+'</span><b>'+labels[i]+'</b></div>').join('')}</div><div class="tot big"><span>Total</span><b>${R(o.total)}</b></div></div>`;
+ }catch(e){out.innerHTML='<p style="color:#fca5a5">'+E(e.message)+'</p><button class="smallbtn" onclick="showTracking()">Volver</button>'}
 }
 
 let toastTimer;
