@@ -33,20 +33,20 @@ export default async function handler(req, res) {
     const admin = !!process.env.ADMIN_PASSWORD && req.headers['x-admin'] === process.env.ADMIN_PASSWORD;
     const deny = () => res.status(401).json({ error: 'No autorizado' });
     if (a === 'paymentproof' && req.method === 'POST') {
-      const id=Number(b.id),phone=String(b.phone||'').replace(/\\D/g,'');const proof=String(b.proof||'');
+      const id=Number(b.id),phone=String(b.phone||'').replace(/\D/g,'');const proof=String(b.proof||'');
       if(!Number.isInteger(id)||id<1||phone.length<8)return res.status(400).json({error:'Pedido o WhatsApp inválido'});
-      if(!/^data:image\\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(proof)||proof.length>1900000)return res.status(400).json({error:'Envía JPG, PNG o WEBP de máximo 1,3 MB'});
+      if(!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(proof)||proof.length>1900000)return res.status(400).json({error:'Envía JPG, PNG o WEBP de máximo 1,3 MB'});
       const rows=await sql`update orders set payment_proof=${proof},payment_status='review',updated_at=now() where id=${id} and regexp_replace(phone,'[^0-9]','','g')=${phone} and pay='pix' and payment_status<>'paid' returning id,payment_status`;
       if(!rows.length)return res.status(404).json({error:'No encontramos el pedido o ya fue pagado'});return res.json({ok:1,payment_status:rows[0].payment_status});
     }
     if (a === 'myorders') {
-      const phone = String(req.query.phone || '').replace(/\\D/g, '');
+      const phone = String(req.query.phone || '').replace(/\D/g, '');
       if (phone.length < 8) return res.status(400).json({error:'WhatsApp inválido'});
       const rows = await sql`select id,public_id,status,created,updated_at,type,total,items,address,pay,payment_status from orders where regexp_replace(phone,'[^0-9]','','g')=${phone} order by created desc limit 50`;
       return res.json(rows);
     }
     if (a === 'track') {
-      const id = Number(req.query.id), phone = String(req.query.phone || '').replace(/\\D/g, '');
+      const id = Number(req.query.id), phone = String(req.query.phone || '').replace(/\D/g, '');
       if (!Number.isInteger(id) || id < 1 || phone.length < 8) return res.status(400).json({error:'Número de pedido o WhatsApp inválido'});
       const [o] = await sql`select o.id,o.public_id,o.status,o.created,o.updated_at,o.type,o.total,o.items,o.address,o.payment_status,o.pay,c.name as courier_name,c.phone as courier_phone from orders o left join couriers c on c.id=o.courier_id where o.id=${id} and regexp_replace(o.phone,'[^0-9]','','g')=${phone} limit 1`;
       if (!o) return res.status(404).json({error:'No encontramos ese pedido con ese WhatsApp'});
@@ -114,7 +114,7 @@ export default async function handler(req, res) {
     if (a === 'couriers') return res.json(await sql`select * from couriers order by active desc,name`);
     if (a === 'courier' && req.method === 'POST') {
       const name=String(b.name||'').trim().slice(0,80), phone=String(b.phone||'').trim().slice(0,30);
-      if(!name||phone.replace(/\\D/g,'').length<8) return res.status(400).json({error:'Nombre y teléfono válido son obligatorios'});
+      if(!name||phone.replace(/\D/g,'').length<8) return res.status(400).json({error:'Nombre y teléfono válido son obligatorios'});
       if(b.id) await sql`update couriers set name=${name},phone=${phone},vehicle=${String(b.vehicle||'Moto').slice(0,30)},plate=${String(b.plate||'').slice(0,20)},active=${b.active!==false} where id=${+b.id}`;
       else await sql`insert into couriers(name,phone,vehicle,plate) values(${name},${phone},${String(b.vehicle||'Moto').slice(0,30)},${String(b.plate||'').slice(0,20)})`;
       return res.json({ok:1});
