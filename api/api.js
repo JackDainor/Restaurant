@@ -9,6 +9,10 @@ const init = () => (ready ||= (async () => {
   await sql`alter table orders add column if not exists promo_code text default ''`;
   await sql`alter table orders add column if not exists discount numeric(10,2) default 0`;
   await sql`alter table orders add column if not exists updated_at timestamptz default now()`;
+  await sql`alter table orders add column if not exists courier_id integer`;
+  await sql`alter table orders add column if not exists courier_fee numeric(10,2) default 0`;
+  await sql`alter table orders add column if not exists courier_paid boolean default false`;
+  await sql`create table if not exists couriers(id serial primary key,name text not null,phone text not null,vehicle text default 'Moto',plate text default '',active boolean default true,created timestamptz default now())`;
 })());
 const DEF = { name: 'Mi Restaurante', whatsapp: '', fee: '5', min: '30', banner: '', logo: '', pix_key: '', pix_qr: '', open: '1', hours: 'Abierto hoy', delivery: '1', address: '', deliveryText: 'Entrega disponible', categories: 'Platos,Bebidas' };
 const settings = async () => {
@@ -30,7 +34,7 @@ export default async function handler(req, res) {
     if (a === 'track') {
       const id = Number(req.query.id), phone = String(req.query.phone || '').replace(/\\D/g, '');
       if (!Number.isInteger(id) || id < 1 || phone.length < 8) return res.status(400).json({error:'Número de pedido o WhatsApp inválido'});
-      const [o] = await sql`select id,status,created,updated_at,type,total,items from orders where id=${id} and regexp_replace(phone,'[^0-9]','','g')=${phone} limit 1`;
+      const [o] = await sql`select o.id,o.status,o.created,o.updated_at,o.type,o.total,o.items,c.name as courier_name,c.phone as courier_phone from orders o left join couriers c on c.id=o.courier_id where o.id=${id} and regexp_replace(o.phone,'[^0-9]','','g')=${phone} limit 1`;
       if (!o) return res.status(404).json({error:'No encontramos ese pedido con ese WhatsApp'});
       return res.json(o);
     }
@@ -84,7 +88,29 @@ export default async function handler(req, res) {
     }
     if (!admin) return deny();
     if (a === 'login') return res.json({ ok: true });
-    if (a === 'orders') return res.json(await sql`select * from orders order by id desc limit 300`);
+    if (a === 'orders') return res.json(await sql`select o.*,c.name as courier_name,c.phone as courier_phone from orders o left join couriers c on c.id=o.courier_id order by o.id desc limit 300`);
+    if (a === 'couriers') return res.json(await sql`select * from couriers order by active desc,name`);
+    if (a === 'courier' && req.method === 'POST') {
+      const name=String(b.name||'').trim().slice(0,80), phone=String(b.phone||'').trim().slice(0,30);
+      if(!name||phone.replace(/\\D/g,'').length<8) return res.status(400).json({error:'Nombre y teléfono válido son obligatorios'});
+      if(b.id) await sql`update couriers set name=${name},phone=${phone},vehicle=${String(b.vehicle||'Moto').slice(0,30)},plate=${String(b.plate||'').slice(0,20)},active=${b.active!==false} where id=${+b.id}`;
+      else await sql`insert into couriers(name,phone,vehicle,plate) values(${name},${phone},${String(b.vehicle||'Moto').slice(0,30)},${String(b.plate||'').slice(0,20)})`;
+      return res.json({ok:1});
+    }
+    if (a === 'assigncourier' && req.method === 'POST') {
+      const id=Number(b.id), courierId=Number(b.courier_id), payout=Math.max(0,Number(b.courier_fee)||0);
+      if(!Number.isInteger(id)||!Number.isInteger(courierId)||payout>10000) return res.status(400).json({error:'Datos de asignación inválidos'});
+      const [courier]=await sql`select id from couriers where id=${courierId} and active=true`;
+      if(!courier) return res.status(400).json({error:'Motoboy no disponible'});
+      const rows=await sql`update orders set courier_id=${courierId},courier_fee=${payout},courier_paid=false,status='en camino',updated_at=now() where id=${id} and type='delivery' returning id`;
+      if(!rows.length) return res.status(404).json({error:'Pedido delivery no encontrado'});
+      return res.json({ok:1});
+    }
+    if (a === 'courierpaid' && req.method === 'POST') {
+      const rows=await sql`update orders set courier_paid=${!!b.paid},updated_at=now() where id=${+b.id} and courier_id is not null returning id,courier_paid`;
+      if(!rows.length)return res.status(404).json({error:'Pedido o motoboy no encontrado'});
+      return res.json({ok:1,order:rows[0]});
+    }
     if (a === 'history') {
       const startDate = new Date(String(req.query.start || ''));
       const endDate = new Date(String(req.query.end || ''));
