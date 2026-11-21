@@ -107,6 +107,8 @@ input,select{width:100%;padding:13px 14px;margin:6px 0;border:1px solid var(--li
 const $=s=>document.querySelector(s),R=n=>'R$ '+Number(n).toFixed(2).replace('.',','),E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let M=[],S={},C=JSON.parse(localStorage.c||'{}'),cat='Todos',T='delivery',P='pix',searchTerm='',installPrompt=null,sending=false,appliedPromo=null,gpsLocation=null;
 const save=()=>{localStorage.c=JSON.stringify(C);updateCartBadge()};
+async function updateTrackingBadge(){const b=$("#trackingBadge"),phone=localStorage.lastOrderPhone||localStorage.p||"";if(!b)return;if(!phone){b.hidden=true;return}try{const r=await fetch("/api/api?a=myorders&phone="+encodeURIComponent(phone)),orders=await r.json();if(!r.ok)throw Error("No se pudo consultar");const n=orders.filter(o=>o.status!=="cancelado"&&o.payment_status!=="paid").length;b.textContent=n>99?"99+":n;b.hidden=!n;b.setAttribute("aria-label",n+" pedidos esperando confirmación de pago")}catch(e){b.hidden=true}}
+
 async function load(){const r=await(await fetch('/api/api?a=menu')).json();M=r.dishes;S=r.s;
 document.title=S.name;$('#nm').textContent=S.name;$('#heroName').textContent=S.name;$('#footerName').textContent=S.name;$('#ban').style.backgroundImage=S.banner?`url("${S.banner}")`:'linear-gradient(135deg,#ea580c,#f59e0b)';
 if(S.logo)$('#logo').style.backgroundImage=`url("${S.logo}")`;
