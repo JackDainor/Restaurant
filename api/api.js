@@ -21,10 +21,16 @@ export default async function handler(req, res) {
     const a = req.query.a, b = req.body || {};
     const admin = !!process.env.ADMIN_PASSWORD && req.headers['x-admin'] === process.env.ADMIN_PASSWORD;
     const deny = () => res.status(401).json({ error: 'No autorizado' });
+    if (a === 'myorders') {
+      const phone = String(req.query.phone || '').replace(/\\D/g, '');
+      if (phone.length < 8) return res.status(400).json({error:'WhatsApp inválido'});
+      const rows = await sql`select id,status,created,updated_at,type,total,items from orders where regexp_replace(phone,'[^0-9]','','g')=${phone} order by created desc limit 50`;
+      return res.json(rows);
+    }
     if (a === 'track') {
       const id = Number(req.query.id), phone = String(req.query.phone || '').replace(/\\D/g, '');
       if (!Number.isInteger(id) || id < 1 || phone.length < 8) return res.status(400).json({error:'Número de pedido o WhatsApp inválido'});
-      const [o] = await sql`select id,status,created,updated_at,type,total from orders where id=${id} and regexp_replace(phone,'[^0-9]','','g')=${phone} limit 1`;
+      const [o] = await sql`select id,status,created,updated_at,type,total,items from orders where id=${id} and regexp_replace(phone,'[^0-9]','','g')=${phone} limit 1`;
       if (!o) return res.status(404).json({error:'No encontramos ese pedido con ese WhatsApp'});
       return res.json(o);
     }
