@@ -6,7 +6,7 @@ const init = () => (ready ||= (async () => {
   await sql`create table if not exists orders(id serial primary key,name text,phone text,type text,address text default '',pay text,items jsonb,total numeric(10,2),fee numeric(10,2) default 0,status text default 'nuevo',created timestamptz default now())`;
   await sql`create table if not exists settings(k text primary key,v text)`;
 })());
-const DEF = { name: 'Mi Restaurante', whatsapp: '', fee: '5', min: '30', banner: '', logo: '', open: '1', hours: 'Abierto hoy', delivery: '1', address: '', deliveryText: 'Entrega disponible' };
+const DEF = { name: 'Mi Restaurante', whatsapp: '', fee: '5', min: '30', banner: '', logo: '', open: '1', hours: 'Abierto hoy', delivery: '1', address: '', deliveryText: 'Entrega disponible', categories: 'Platos,Bebidas' };
 const settings = async () => {
   const r = await sql`select k,v from settings`;
   return { ...DEF, ...Object.fromEntries(r.map(x => [x.k, x.v])) };
