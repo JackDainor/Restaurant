@@ -30,15 +30,22 @@ export default async function handler(req, res) {
     if (a === 'myorders') {
       const phone = String(req.query.phone || '').replace(/\\D/g, '');
       if (phone.length < 8) return res.status(400).json({error:'WhatsApp inválido'});
-      const rows = await sql`select id,status,created,updated_at,type,total,items from orders where regexp_replace(phone,'[^0-9]','','g')=${phone} order by created desc limit 50`;
+      const rows = await sql`select id,status,created,updated_at,type,total,items,address from orders where regexp_replace(phone,'[^0-9]','','g')=${phone} order by created desc limit 50`;
       return res.json(rows);
     }
     if (a === 'track') {
       const id = Number(req.query.id), phone = String(req.query.phone || '').replace(/\\D/g, '');
       if (!Number.isInteger(id) || id < 1 || phone.length < 8) return res.status(400).json({error:'Número de pedido o WhatsApp inválido'});
-      const [o] = await sql`select o.id,o.status,o.created,o.updated_at,o.type,o.total,o.items,c.name as courier_name,c.phone as courier_phone from orders o left join couriers c on c.id=o.courier_id where o.id=${id} and regexp_replace(o.phone,'[^0-9]','','g')=${phone} limit 1`;
+      const [o] = await sql`select o.id,o.status,o.created,o.updated_at,o.type,o.total,o.items,o.address,c.name as courier_name,c.phone as courier_phone from orders o left join couriers c on c.id=o.courier_id where o.id=${id} and regexp_replace(o.phone,'[^0-9]','','g')=${phone} limit 1`;
       if (!o) return res.status(404).json({error:'No encontramos ese pedido con ese WhatsApp'});
       return res.json(o);
+    }
+    if (a === 'reversegeo') {
+      const lat=Number(req.query.lat),lng=Number(req.query.lng);
+      if(!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180)return res.status(400).json({error:'Coordenadas inválidas'});
+      const rr=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+lat+'&lon='+lng+'&zoom=18&addressdetails=1',{headers:{'User-Agent':'RestaurantDeliveryApp/1.0 contact: support@example.com','Accept-Language':'pt-BR,es'});
+      if(!rr.ok)return res.status(502).json({error:'No se pudo convertir la ubicación en dirección'});
+      const jj=await rr.json();return res.json({address:jj.display_name||''});
     }
     if (a === 'menu') {
       const dishes = admin ? await sql`select * from dishes order by cat,id` : await sql`select * from dishes where active order by cat,id`;
