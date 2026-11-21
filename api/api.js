@@ -5,6 +5,9 @@ const init = () => (ready ||= (async () => {
   await sql`create table if not exists dishes(id serial primary key,name text not null,descr text default '',price numeric(10,2) not null,cat text default 'Platos',img text default '',active boolean default true)`;
   await sql`create table if not exists orders(id serial primary key,name text,phone text,type text,address text default '',pay text,items jsonb,total numeric(10,2),fee numeric(10,2) default 0,status text default 'nuevo',created timestamptz default now())`;
   await sql`create table if not exists settings(k text primary key,v text)`;
+  await sql`create table if not exists promotions(id serial primary key,code text unique not null,title text default '',kind text not null,value numeric(10,2) not null,min_total numeric(10,2) default 0,starts_at timestamptz,ends_at timestamptz,active boolean default true,created timestamptz default now())`;
+  await sql`alter table orders add column if not exists promo_code text default ''`;
+  await sql`alter table orders add column if not exists discount numeric(10,2) default 0`;
 })());
 const DEF = { name: 'Mi Restaurante', whatsapp: '', fee: '5', min: '30', banner: '', logo: '', open: '1', hours: 'Abierto hoy', delivery: '1', address: '', deliveryText: 'Entrega disponible', categories: 'Platos,Bebidas' };
 const settings = async () => {
@@ -43,7 +46,7 @@ export default async function handler(req, res) {
       if (sub < +s.min) return res.status(400).json({ error: `Pedido mínimo R$ ${s.min}` });
       const fee = b.type === 'delivery' ? +s.fee : 0;
       const addr = b.type === 'local' ? 'Mesa ' + (b.table || '?') : b.address || '';
-      const [o] = await sql`insert into orders(name,phone,type,address,pay,items,total,fee) values(${String(b.name).slice(0, 80)},${String(b.phone).slice(0, 30)},${b.type},${String(addr).slice(0, 250)},${String(b.pay || 'pix').slice(0, 20)},${JSON.stringify(items)},${sub + fee},${fee}) returning id,total`;
+      const [o] = await sql`insert into orders(name,phone,type,address,pay,items,total,fee,promo_code,discount) values(${String(b.name).slice(0, 80)},${String(b.phone).slice(0, 30)},${b.type},${String(addr).slice(0, 250)},${String(b.pay || 'pix').slice(0, 20)},${JSON.stringify(items)},${sub - discount + fee},${fee},${promoCode},${discount}) returning id,total,discount,promo_code`;
       return res.json(o);
     }
     if (!admin) return deny();
@@ -57,7 +60,39 @@ export default async function handler(req, res) {
       const end = endDate.toISOString();
       return res.json(await sql`select * from orders where created >= ${start}::timestamptz and created < ${end}::timestamptz order by created desc`);
     }
-    if (a === 'status') { await sql`update orders set status=${b.status} where id=${+b.id}`; return res.json({ ok: 1 }); }
+    if (a === 'status') {
+      const allowed = ['nuevo','confirmado','preparando','listo','en camino','entregado','cancelado'];
+      if (!Number.isInteger(+b.id) || +b.id < 1 || !allowed.includes(b.status)) return res.status(400).json({ error: 'Estado o pedido inválido' });
+      const rows = await sql`update orders set status=${b.status} where id=${+b.id} returning id,status`;
+      if (!rows.length) return res.status(404).json({ error: 'Pedido no encontrado' });
+      return res.json({ ok: 1, order: rows[0] });
+    }
+    if (a === 'promotions' && req.method === 'GET') return res.json(await sql`select * from promotions order by created desc`);
+    if (a === 'promotion' && req.method === 'POST') {
+      const code = String(b.code || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,32);
+      const title = String(b.title || '').trim().slice(0,100);
+      const kind = b.kind === 'fixed' ? 'fixed' : 'percent';
+      const value = Number(b.value), min = Math.max(0, Number(b.min_total) || 0);
+      if (!code || !title || !Number.isFinite(value) || value <= 0 || (kind === 'percent' && value > 100)) return res.status(400).json({error:'Revisa el código, nombre y valor del descuento'});
+      const start = b.starts_at ? new Date(b.starts_at) : null, end = b.ends_at ? new Date(b.ends_at) : null;
+      if ((start && !Number.isFinite(start.getTime())) || (end && !Number.isFinite(end.getTime())) || (start && end && end <= start)) return res.status(400).json({error:'Fechas de promoción inválidas'});
+      if (b.id) {
+        await sql`update promotions set code=${code},title=${title},kind=${kind},value=${value},min_total=${min},starts_at=${start ? start.toISOString() : null},ends_at=${end ? end.toISOString() : null},active=${b.active !== false} where id=${+b.id}`;
+      } else {
+        await sql`insert into promotions(code,title,kind,value,min_total,starts_at,ends_at,active) values(${code},${title},${kind},${value},${min},${start ? start.toISOString() : null},${end ? end.toISOString() : null},${b.active !== false})`;
+      }
+      return res.json({ok:1});
+    }
+    if (a === 'delpromotion') { await sql`delete from promotions where id=${+b.id}`; return res.json({ok:1}); }
+    if (a === 'checkpromo' && req.method === 'POST') {
+      const code = String(b.code || '').trim().toUpperCase();
+      const [p] = await sql`select code,title,kind,value,min_total from promotions where upper(code)=${code} and active=true and (starts_at is null or starts_at<=now()) and (ends_at is null or ends_at>=now()) limit 1`;
+      if (!p) return res.status(400).json({error:'Código promocional inválido o vencido'});
+      const subtotal = Math.max(0, Number(b.subtotal) || 0);
+      if (subtotal < Number(p.min_total || 0)) return res.status(400).json({error:`Compra mínima: R$ ${p.min_total}`});
+      const discount = Math.min(subtotal, p.kind === 'percent' ? subtotal * Number(p.value) / 100 : Number(p.value));
+      return res.json({ok:1,code:p.code,title:p.title,discount});
+    }
     if (a === 'dish') {
       const p = +b.price || 0;
       if (b.id) await sql`update dishes set name=${b.name},descr=${b.descr || ''},price=${p},cat=${b.cat || 'Platos'},img=${b.img || ''},active=${b.active !== false} where id=${+b.id}`;
