@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     if (a === 'reversegeo') {
       const lat=Number(req.query.lat),lng=Number(req.query.lng);
       if(!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180)return res.status(400).json({error:'Coordenadas inválidas'});
-      const rr=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+lat+'&lon='+lng+'&zoom=18&addressdetails=1',{headers:{'User-Agent':'RestaurantDeliveryApp/1.0 contact: support@example.com','Accept-Language':'pt-BR,es'});
+      const rr=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='+lat+'&lon='+lng+'&zoom=18&addressdetails=1',{headers:{'User-Agent':'RestaurantDeliveryApp/1.0','Accept-Language':'pt-BR,es'}});
       if(!rr.ok)return res.status(502).json({error:'No se pudo convertir la ubicación en dirección'});
       const jj=await rr.json();return res.json({address:jj.display_name||''});
     }
