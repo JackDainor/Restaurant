@@ -76,7 +76,7 @@ export default async function handler(req, res) {
         promoCode = promo.code;
       }
       const addr = b.type === 'local' ? 'Mesa ' + (b.table || '?') : b.address || '';
-      const [o] = await sql`insert into orders(name,phone,type,address,pay,items,total,fee,promo_code,discount,delivery_lat,delivery_lng) values(${String(b.name).slice(0, 80)},${String(b.phone).slice(0, 30)},${b.type},${String(addr).slice(0, 250)},${String(b.pay || 'pix').slice(0, 20)},${JSON.stringify(items)},${sub - discount + fee},${fee},${promoCode},${discount},${b.type==='delivery'&&Number.isFinite(Number(b.lat))?Number(b.lat):null},${b.type==='delivery'&&Number.isFinite(Number(b.lng))?Number(b.lng):null}) returning id,total,discount,promo_code`;
+      const [o] = await sql`insert into orders(name,phone,type,address,pay,items,total,fee,promo_code,discount,delivery_lat,delivery_lng) values(${String(b.name).slice(0, 80)},${String(b.phone).slice(0, 30)},${b.type},${String(addr).slice(0, 250)},${String(b.pay || 'pix').slice(0, 20)},${JSON.stringify(items)},${sub - discount + fee},${fee},${promoCode},${discount},${b.type==='delivery'&&b.lat!==null&&b.lat!==undefined&&Number.isFinite(Number(b.lat))?Number(b.lat):null},${b.type==='delivery'&&b.lng!==null&&b.lng!==undefined&&Number.isFinite(Number(b.lng))?Number(b.lng):null}) returning id,total,discount,promo_code`;
       return res.json(o);
     }
     if (a === 'checkpromo' && req.method === 'POST') {
