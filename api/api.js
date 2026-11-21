@@ -45,6 +45,16 @@ export default async function handler(req, res) {
       if (!items.length) return res.status(400).json({ error: 'Pedido vacío' });
       if (sub < +s.min) return res.status(400).json({ error: `Pedido mínimo R$ ${s.min}` });
       const fee = b.type === 'delivery' ? +s.fee : 0;
+      let discount = 0, promoCode = '';
+      if (b.promoCode) {
+        const code = String(b.promoCode).trim().toUpperCase();
+        const [promo] = await sql`select code,kind,value,min_total from promotions where upper(code)=${code} and active=true and (starts_at is null or starts_at<=now()) and (ends_at is null or ends_at>=now()) limit 1`;
+        if (!promo) return res.status(400).json({error:'La promoción ya no está disponible'});
+        if (sub < Number(promo.min_total || 0)) return res.status(400).json({error:`Compra mínima: R$ ${promo.min_total}`});
+        discount = Math.min(sub, promo.kind === 'percent' ? sub * Number(promo.value) / 100 : Number(promo.value));
+        discount = Math.round(discount * 100) / 100;
+        promoCode = promo.code;
+      }
       const addr = b.type === 'local' ? 'Mesa ' + (b.table || '?') : b.address || '';
       const [o] = await sql`insert into orders(name,phone,type,address,pay,items,total,fee,promo_code,discount) values(${String(b.name).slice(0, 80)},${String(b.phone).slice(0, 30)},${b.type},${String(addr).slice(0, 250)},${String(b.pay || 'pix').slice(0, 20)},${JSON.stringify(items)},${sub - discount + fee},${fee},${promoCode},${discount}) returning id,total,discount,promo_code`;
       return res.json(o);
@@ -60,7 +70,7 @@ export default async function handler(req, res) {
     }
     if (!admin) return deny();
     if (a === 'login') return res.json({ ok: true });
-    if (a === 'orders') return res.json(await sql`select * from orders order by id desc limit 100`);
+    if (a === 'orders') return res.json(await sql`select * from orders order by id desc limit 300`);
     if (a === 'history') {
       const startDate = new Date(String(req.query.start || ''));
       const endDate = new Date(String(req.query.end || ''));
