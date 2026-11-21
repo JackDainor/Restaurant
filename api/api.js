@@ -49,6 +49,15 @@ export default async function handler(req, res) {
       const [o] = await sql`insert into orders(name,phone,type,address,pay,items,total,fee,promo_code,discount) values(${String(b.name).slice(0, 80)},${String(b.phone).slice(0, 30)},${b.type},${String(addr).slice(0, 250)},${String(b.pay || 'pix').slice(0, 20)},${JSON.stringify(items)},${sub - discount + fee},${fee},${promoCode},${discount}) returning id,total,discount,promo_code`;
       return res.json(o);
     }
+    if (a === 'checkpromo' && req.method === 'POST') {
+      const code = String(b.code || '').trim().toUpperCase();
+      const [p] = await sql`select code,title,kind,value,min_total from promotions where upper(code)=${code} and active=true and (starts_at is null or starts_at<=now()) and (ends_at is null or ends_at>=now()) limit 1`;
+      if (!p) return res.status(400).json({error:'Código promocional inválido o vencido'});
+      const subtotal = Math.max(0, Number(b.subtotal) || 0);
+      if (subtotal < Number(p.min_total || 0)) return res.status(400).json({error:`Compra mínima: R$ ${p.min_total}`});
+      const discount = Math.min(subtotal, p.kind === 'percent' ? subtotal * Number(p.value) / 100 : Number(p.value));
+      return res.json({ok:1,code:p.code,title:p.title,discount});
+    }
     if (!admin) return deny();
     if (a === 'login') return res.json({ ok: true });
     if (a === 'orders') return res.json(await sql`select * from orders order by id desc limit 100`);
@@ -84,15 +93,6 @@ export default async function handler(req, res) {
       return res.json({ok:1});
     }
     if (a === 'delpromotion') { await sql`delete from promotions where id=${+b.id}`; return res.json({ok:1}); }
-    if (a === 'checkpromo' && req.method === 'POST') {
-      const code = String(b.code || '').trim().toUpperCase();
-      const [p] = await sql`select code,title,kind,value,min_total from promotions where upper(code)=${code} and active=true and (starts_at is null or starts_at<=now()) and (ends_at is null or ends_at>=now()) limit 1`;
-      if (!p) return res.status(400).json({error:'Código promocional inválido o vencido'});
-      const subtotal = Math.max(0, Number(b.subtotal) || 0);
-      if (subtotal < Number(p.min_total || 0)) return res.status(400).json({error:`Compra mínima: R$ ${p.min_total}`});
-      const discount = Math.min(subtotal, p.kind === 'percent' ? subtotal * Number(p.value) / 100 : Number(p.value));
-      return res.json({ok:1,code:p.code,title:p.title,discount});
-    }
     if (a === 'dish') {
       const p = +b.price || 0;
       if (b.id) await sql`update dishes set name=${b.name},descr=${b.descr || ''},price=${p},cat=${b.cat || 'Platos'},img=${b.img || ''},active=${b.active !== false} where id=${+b.id}`;
