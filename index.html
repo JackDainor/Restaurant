@@ -54,7 +54,7 @@ input,select{width:100%;padding:13px 14px;margin:6px 0;border:1px solid var(--li
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 
 /* Navegación inferior */
-.bottomNav{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);width:min(520px,calc(100% - 24px));display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:8px;background:rgba(28,25,22,.94);border:1px solid #ffffff20;border-radius:20px;box-shadow:0 12px 35px #0009;backdrop-filter:blur(18px);z-index:30}
+.bottomNav{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);width:min(520px,calc(100% - 24px));display:grid;grid-template-columns:repeat(5,1fr);gap:5px;padding:8px;background:rgba(28,25,22,.94);border:1px solid #ffffff20;border-radius:20px;box-shadow:0 12px 35px #0009;backdrop-filter:blur(18px);z-index:30}
 .bottomNav button{border:0;background:transparent;color:#c9bdb3;border-radius:13px;padding:8px 4px 7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:750;cursor:pointer;min-width:0}
 .bottomNav button .navIcon{font-size:19px;line-height:1.1}
 .bottomNav button.active{background:#f9731622;color:#fdba74}
@@ -77,7 +77,7 @@ input,select{width:100%;padding:13px 14px;margin:6px 0;border:1px solid var(--li
 <nav class="bottomNav" aria-label="Navegación principal">
 <button class="active" data-nav="home" onclick="navTo('home')"><span class="navIcon">⌂</span><span>Inicio</span></button>
 <button data-nav="menu" onclick="navTo('menu')"><span class="navIcon">▦</span><span>Menú</span></button>
-<button data-nav="cart" onclick="navTo('cart')"><span class="navIcon">🛒<span class="cartBadge" id="cartBadge" hidden>0</span></span><span>Pedido</span></button>
+<button data-nav="cart" onclick="navTo('cart')"><span class="navIcon">🛒<span class="cartBadge" id="cartBadge" hidden>0</span></span><span>Pedido</span></button><button data-nav="tracking" onclick="navTo('tracking')"><span class="navIcon">📦</span><span>Seguimiento</span></button>
 <button data-nav="contact" onclick="navTo('contact')"><span class="navIcon">☏</span><span>WhatsApp</span></button>
 </nav>
 <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Fotografía ampliada" onclick="closeLightbox()">
@@ -106,21 +106,35 @@ function openCart(){const L=lines();if(!L.length){$('#md').classList.remove('on'
 const fee=T=='delivery'?+S.fee:0;
 $('#box').innerHTML=`<h2>Tu pedido</h2>${L.map(l=>`<div class="ln"><span>${E(l.d.name)}<br><small>${R(l.d.price)}</small></span><span class="q"><button onclick="add(${l.d.id},-1)">−</button> ${l.q} <button onclick="add(${l.d.id},1)">+</button></span></div>`).join('')}
 <div class="seg">${[['local','🍽️ Aquí'],['recoger','🛍️ Recoger'],['delivery','🛵 Delivery']].map(([k,v])=>`<button class="${T==k?'on':''}" onclick="T='${k}';openCart()">${v}</button>`).join('')}</div>
-<div class="tot"><span>Código promocional</span><span>${promo?E(promo.code)+' aplicado':'Opcional'}</span></div><div style="display:flex;gap:7px"><input id="promoInput" placeholder="Escribe tu cupón" value="${E(promo?.code||'')}" style="flex:1;min-width:0"><button type="button" class="smallbtn" onclick="applyPromo()">Aplicar</button></div>${promo?'<div class="tot"><span>Descuento</span><span>-'+R(promo.discount)+'</span></div>':''}<input id="fn" placeholder="Tu nombre" value="${E(localStorage.n||'')}"><input id="fp" placeholder="WhatsApp / teléfono" inputmode="tel" value="${E(localStorage.p||'')}">
+<div class="tot"><span>Código promocional</span><span>${appliedPromo?E(appliedPromo.code)+' aplicado':'Opcional'}</span></div><input id="fn" placeholder="Tu nombre" value="${E(localStorage.n||'')}"><input id="fp" placeholder="WhatsApp / teléfono" inputmode="tel" value="${E(localStorage.p||'')}">
 ${T=='delivery'?'<input id="fa" placeholder="Dirección completa" value="'+E(localStorage.a||'')+'">':T=='local'?'<input id="ft" placeholder="Número de mesa" inputmode="numeric">':''}
 <div class="seg">${[['pix','Pix'],['debito','Débito'],['credito','Crédito']].map(([k,v])=>`<button class="${P==k?'on':''}" onclick="P='${k}';openCart()">${v}</button>`).join('')}</div>
-<small>Pago al ${T=='delivery'?'recibir':'retirar/en el local'}. ${P=='pix'?'Te enviaremos el Pix por WhatsApp.':''}</small>
-<div style="display:flex;gap:7px;margin:12px 0"><input id="promoCode" placeholder="Código promocional" style="margin:0" value="${E(appliedPromo?.code||'')}"><button type="button" class="smallbtn" style="white-space:nowrap" onclick="checkPromo()">Aplicar</button></div><div id="promoMsg" class="help">${appliedPromo?'Cupón '+E(appliedPromo.code)+' aplicado.':''}</div><div class="tot" style="margin-top:10px"><span>Subtotal</span><span>${R(sub())}</span></div>${fee?`<div class="tot"><span>Delivery</span><span>${R(fee)}</span></div>`:''}
+<small>Pago al ${T=='delivery'?'recibir':'retirar/en el local'}.</small>${P==='pix'?`<div style="margin:12px 0;padding:14px;border:1px solid var(--line);border-radius:14px;background:#26221f"><b style="display:block;margin-bottom:9px">Paga con Pix</b>${S.pix_qr?`<img src="${E(S.pix_qr)}" alt="QR Pix del restaurante" style="display:block;width:min(220px,100%);margin:8px auto;border-radius:12px;background:#fff;padding:8px">`:'<p class="help">El restaurante todavía no configuró su QR Pix.</p>'}${S.pix_key?`<div class="tot"><span>Llave Pix</span><b style="overflow-wrap:anywhere">${E(S.pix_key)}</b></div><button type="button" class="smallbtn" style="width:100%;margin-top:8px" onclick="copyPixKey()">Copiar llave Pix</button>`:'<p class="help">La llave Pix aún no está configurada.</p>'}<small class="help">Después de pagar, conserva el comprobante.</small></div>`:''}
+<div class="tot" style="margin-top:10px"><span>Subtotal</span><span>${R(sub())}</span></div>${fee?`<div class="tot"><span>Delivery</span><span>${R(fee)}</span></div>`:''}
 <div class="tot" id="promoDiscount" style="${appliedPromo?'':'display:none'}"><span>Descuento</span><span>−${R(appliedPromo?.discount||0)}</span></div><div class="tot big"><span>Total</span><span>${R(sub()+fee-(appliedPromo?.discount||0))}</span></div><button class="go" onclick="send()">Confirmar pedido</button>`;
 $('#md').classList.add('on')}
 async function checkPromo(){const code=$('#promoCode')?.value.trim();if(!code){showToast('Escribe un código promocional','error');return}try{const r=await fetch('/api/api?a=checkpromo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,subtotal:sub()})});const j=await r.json();if(!r.ok)throw Error(j.error||'Cupón inválido');appliedPromo=j;openCart();showToast('Cupón aplicado: −'+R(j.discount),'success')}catch(e){appliedPromo=null;const m=$('#promoMsg');if(m)m.textContent=e.message;showToast(e.message,'error')}}
-async function applyPromo(){const code=$('#promoInput')?.value.trim();if(!code)return showToast('Escribe un código promocional','error');try{const r=await fetch('/api/api?a=checkpromo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,subtotal:sub()})});const j=await r.json();if(!r.ok)throw Error(j.error||'Cupón no válido');promo={code:j.code,discount:Number(j.discount)};showToast('Cupón aplicado: -'+R(promo.discount),'success');openCart()}catch(e){promo=null;showToast(e.message,'error');openCart()}}
+
+async function copyPixKey(){if(!S.pix_key)return showToast('Llave Pix no configurada','error');try{await navigator.clipboard.writeText(S.pix_key);showToast('Llave Pix copiada','success')}catch(e){showToast('Mantén presionada la llave para copiarla','error')}}
 async function send(){if(sending)return;const g=i=>$(i)?.value.trim()||'';const name=g('#fn'),phone=g('#fp'),address=g('#fa'),table=g('#ft');
 if(!name||!phone){showToast('Completa tu nombre y teléfono','error');return}localStorage.n=name;localStorage.p=phone;if(address)localStorage.a=address;
-const body={name,phone,address,table,type:T,pay:P,promo:appliedPromo?.code||'',items:lines().map(l=>({id:l.d.id,q:l.q}))};
+const body={name,phone,address,table,type:T,pay:P,promoCode:appliedPromo?.code||'',items:lines().map(l=>({id:l.d.id,q:l.q}))};
 const btn=$('.go');sending=true;if(btn){btn.disabled=true;btn.textContent='Enviando pedido…'}let r,j;try{r=await fetch('/api/api?a=order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});j=await r.json()}catch(e){sending=false;if(btn){btn.disabled=false;btn.textContent='Confirmar pedido'}showToast('No se pudo conectar. Inténtalo de nuevo.','error');return}if(!r.ok){sending=false;if(btn){btn.disabled=false;btn.textContent='Confirmar pedido'}showToast(j.error||'No se pudo enviar el pedido','error');return}
-const txt=`Hola! Pedido #${j.id}\n`+lines().map(l=>`${l.q}x ${l.d.name}`).join('\n')+`\nTotal: ${R(j.total)}\nTipo: ${T}\nPago: ${P}\n${name}`;
-sending=false;C={};appliedPromo=null;save();showToast('✅ Pedido #'+j.id+' enviado correctamente','success');$('#box').innerHTML=`<h2>✅ ¡Pedido #${j.id} enviado!</h2><p>Total ${R(j.total)}. El restaurante ya lo recibió.</p><a class="go" style="display:block;text-align:center;text-decoration:none" target="_blank" href="https://wa.me/${S.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(txt)}">Enviar resumen por WhatsApp</a><button class="go" style="background:#78716c" onclick="$('#md').classList.remove('on')">Cerrar</button>`}
+localStorage.lastOrderId=String(j.id);localStorage.lastOrderPhone=phone;const txt=`Hola! Pedido #${j.id}\n`+lines().map(l=>`${l.q}x ${l.d.name}`).join('\n')+`\nTotal: ${R(j.total)}\nTipo: ${T}\nPago: ${P}\n${name}`;
+sending=false;C={};appliedPromo=null;save();showToast('✅ Pedido #'+j.id+' enviado correctamente','success');$('#box').innerHTML=`<h2>✅ ¡Pedido #${j.id} enviado!</h2><p>Total ${R(j.total)}. El restaurante ya lo recibió.</p>${P==='pix'?(S.pix_qr?`<img src="${E(S.pix_qr)}" alt="QR Pix" style="display:block;width:min(220px,100%);margin:12px auto;background:#fff;padding:8px;border-radius:12px">`:'' )+(S.pix_key?`<p style="text-align:center;overflow-wrap:anywhere"><b>Llave Pix:</b> ${E(S.pix_key)} <button class="smallbtn" onclick="copyPixKey()">Copiar</button></p>`:''):''}<button class="go" onclick="showTracking(${j.id},${JSON.stringify(phone)})">📦 Seguir mi pedido</button><a class="go" style="display:block;text-align:center;text-decoration:none" target="_blank" href="https://wa.me/${S.whatsapp.replace(/\D/g,'')}?text=${encodeURIComponent(txt)}">Enviar resumen por WhatsApp</a><button class="go" style="background:#78716c" onclick="$('#md').classList.remove('on')">Cerrar</button>`}
+
+async function showTracking(id=localStorage.lastOrderId||'',phone=localStorage.lastOrderPhone||''){
+ $('#box').innerHTML=`<h2>📦 Seguimiento del pedido</h2><p class="help">Ingresa el número de pedido y el WhatsApp utilizado al comprar.</p><input id="trackId" inputmode="numeric" placeholder="Número de pedido" value="${E(id)}"><input id="trackPhone" inputmode="tel" placeholder="WhatsApp / teléfono" value="${E(phone)}"><button class="go" onclick="lookupOrder()">Consultar pedido</button><div id="trackResult"></div><button class="smallbtn" style="width:100%;margin-top:10px" onclick="$('#md').classList.remove('on')">Cerrar</button>`;
+ $('#md').classList.add('on');if(id&&phone)lookupOrder();
+}
+async function lookupOrder(){
+ const id=$('#trackId')?.value.trim(),phone=$('#trackPhone')?.value.trim(),out=$('#trackResult');if(!id||!phone){showToast('Completa el número y WhatsApp','error');return}
+ out.innerHTML='<p class="help">Consultando estado…</p>';
+ try{const r=await fetch('/api/api?a=track&id='+encodeURIComponent(id)+'&phone='+encodeURIComponent(phone));const o=await r.json();if(!r.ok)throw Error(o.error||'No se pudo consultar');
+ const steps=['nuevo','confirmado','preparando','listo','en camino','entregado'],labels=['Pedido recibido','Pedido confirmado','En preparación','Listo para retirar','En camino','Entregado'],pos=steps.indexOf(o.status);
+ out.innerHTML='<div style="margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:14px"><b>Pedido #'+o.id+'</b><p class="help">Última actualización: '+new Date(o.updated_at||o.created).toLocaleString()+'</p>'+(o.status==='cancelado'?'<p style="color:#fca5a5;font-weight:800">Este pedido fue cancelado.</p>':'<div style="margin-top:14px">'+steps.map((s,i)=>'<div style="display:flex;gap:10px;align-items:center;padding:8px 0;color:'+(i<=pos?'#86efac':'#a8a29e')+'"><span style="font-size:18px">'+(i<=pos?'●':'○')+'</span><b>'+labels[i]+'</b></div>').join('')+'</div>')+'<div class="tot"><span>Total</span><b>'+R(o.total)+'</b></div></div>';
+ }catch(e){out.innerHTML='<p style="color:#fca5a5;font-size:13px">'+E(e.message)+'</p>'}
+}
 
 let toastTimer;
 function showToast(message,type='normal'){const t=$('#toast');t.textContent=message;t.className='toast show'+(type==='normal'?'':' '+type);clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2600)}
@@ -129,6 +143,7 @@ function navTo(where){
  if(where==='home')window.scrollTo({top:0,behavior:'smooth'});
  if(where==='menu')document.querySelector('#menu').scrollIntoView({behavior:'smooth',block:'start'});
  if(where==='cart')openCart();
+ if(where==='tracking')showTracking();
  if(where==='contact')window.open($('#wa').href,'_blank','noopener');
 }
 function closeLightbox(){ $('#lightbox').classList.remove('open'); $('#lightboxImg').removeAttribute('src'); }
