@@ -1,17 +1,30 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin</title><meta name="robots" content="noindex">
 <style>
-:root{--o:#ea580c;--bg:#f5f5f4;--c:#fff;--t:#1c1917;--m:#78716c;--b:#e7e5e4}@media(prefers-color-scheme:dark){:root{--bg:#1c1917;--c:#292524;--t:#fafaf9;--m:#a8a29e;--b:#44403c}}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--t)}.w{max-width:900px;margin:auto;padding:12px}.preview{display:block;max-width:100%;max-height:150px;object-fit:cover;border-radius:10px;margin:6px 0}.filehint{font-size:12px;color:var(--m)}
-nav{display:flex;gap:6px;position:sticky;top:0;background:var(--bg);padding:10px 0;z-index:3}nav button{flex:1;padding:12px;border:0;border-radius:12px;background:var(--c);color:var(--t);font-weight:600;cursor:pointer}nav .on{background:var(--o);color:#fff}
-.card{background:var(--c);border-radius:14px;padding:12px;margin-bottom:10px;border:1px solid var(--b)}
-input,select,textarea{width:100%;padding:10px;margin:4px 0;border:1px solid var(--b);border-radius:8px;background:var(--bg);color:var(--t);font-size:15px}
-button.p{background:var(--o);color:#fff;border:0;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}button.s{background:var(--bg);color:var(--t);border:1px solid var(--b);padding:8px 10px;border-radius:8px;cursor:pointer;margin:2px}
-.tag{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;background:var(--bg);margin-right:4px}.row{display:flex;justify-content:space-between;gap:8px;align-items:center}
+:root{--o:#f97316;--bg:#10100f;--c:#1b1917;--t:#fffaf5;--m:#b6aaa0;--b:#39332e;--soft:#28231f}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:radial-gradient(ellipse at top,#292019 0%,var(--bg) 55%);color:var(--t);min-height:100vh}
+.w{max-width:1040px;margin:auto;padding:22px 16px 60px}
+#app:before{content:"RESTAURANT · PANEL DE CONTROL";display:block;color:#fb923c;font-size:11px;font-weight:900;letter-spacing:.18em;margin:4px 0 18px}
+nav{display:flex;gap:8px;position:sticky;top:0;background:#10100fee;backdrop-filter:blur(14px);padding:12px 0 16px;z-index:3;border-bottom:1px solid #ffffff10;margin-bottom:18px}
+nav button{flex:1;padding:13px 10px;border:1px solid var(--b);border-radius:13px;background:var(--c);color:var(--m);font-weight:800;cursor:pointer;font-size:13px}
+nav .on{background:linear-gradient(110deg,#fb923c,#ea580c);border-color:transparent;color:#211006;box-shadow:0 8px 20px #f9731625}
+.card{background:linear-gradient(145deg,#211f1d,#191817);border-radius:18px;padding:18px;margin-bottom:13px;border:1px solid #ffffff13;box-shadow:0 10px 26px #0002}
+.card b{letter-spacing:-.01em}.card> b{font-size:17px}
+input,select,textarea{width:100%;padding:13px 14px;margin:6px 0;border:1px solid var(--b);border-radius:12px;background:#28231f;color:var(--t);font-size:15px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--o);box-shadow:0 0 0 3px #f9731620}
+label{display:block;margin:10px 0 5px;color:#f2e8df;font-weight:650}label small{display:block;color:#fb923c;font-size:11px;letter-spacing:.05em;margin-bottom:4px}
+button{transition:transform .18s,filter .18s}button:active{transform:scale(.97)}button.p{background:linear-gradient(110deg,#fb923c,#ea580c);color:#211006;border:0;padding:12px 17px;border-radius:12px;cursor:pointer;font-weight:900;box-shadow:0 7px 18px #f9731628}button.s{background:#2a2622;color:#eee3da;border:1px solid var(--b);padding:9px 12px;border-radius:10px;cursor:pointer;margin:3px;font-weight:650}
+.tag{display:inline-flex;align-items:center;padding:5px 10px;border-radius:99px;font-size:11px;background:#f9731618;color:#fdba74;border:1px solid #f9731630;margin:5px 4px 2px 0;font-weight:750}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:center}.row>div:first-child{min-width:0}.row>div:last-child{display:flex;flex-wrap:wrap;justify-content:flex-end}
+.preview{display:block;max-width:100%;max-height:210px;object-fit:cover;border-radius:14px;margin:10px 0;border:1px solid var(--b);background:var(--soft)}
+.filehint{font-size:12px;color:var(--m);display:block;margin:4px 0 10px;line-height:1.5}
+a{color:#fdba74}#app>p{color:var(--m)}
+@media(max-width:560px){.w{padding:14px 10px 40px}nav{gap:5px}nav button{padding:12px 4px;font-size:11px;border-radius:11px}.card{padding:14px;border-radius:15px}.row{align-items:flex-start}.row>div:last-child{max-width:120px}button.s{padding:8px 9px;font-size:12px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
 </style></head><body><div class="w" id="app"></div><script>
 const $=s=>document.querySelector(s),R=n=>'R$ '+Number(n).toFixed(2).replace('.',','),E=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let K=sessionStorage.k||'',tab='orders',D=[],S={},O=[],ed=null,dishPhoto='',bannerPhoto='',logoPhoto='';
 const api=async(a,b)=>{const r=await fetch('/api/api?a='+a,{method:b?'POST':'GET',headers:{'Content-Type':'application/json','x-admin':K},body:b?JSON.stringify(b):undefined});if(r.status==401){sessionStorage.k=K='';login();throw 0}return r.json()};
-function login(){$('#app').innerHTML=`<div class="card" style="max-width:340px;margin:20vh auto"><h2>🔐 Admin</h2><input id="pw" type="password" placeholder="Clave"><button class="p" style="width:100%" onclick="K=$('#pw').value;api('login',{}).then(()=>{sessionStorage.k=K;start()})">Entrar</button></div>`}
+function login(){$('#app').innerHTML=`<div class="card" style="max-width:380px;margin:18vh auto"><h2 style="font-size:25px;margin:0 0 6px">🔐 Bienvenido al panel</h2><p style="color:var(--m);font-size:13px;margin:0 0 16px">Administra pedidos, platos y datos de tu restaurante.</p><input id="pw" type="password" placeholder="Clave"><button class="p" style="width:100%" onclick="K=$('#pw').value;api('login',{}).then(()=>{sessionStorage.k=K;start()})">Entrar</button></div>`}
 async function start(){const m=await api('menu');D=m.dishes;S=m.s;draw()}
 const ST=['nuevo','preparando','listo','en camino','entregado','cancelado'],TY={local:'🍽️ En local',recoger:'🛍️ Recoger',delivery:'🛵 Delivery'};
 async function draw(){let h=`<nav>${[['orders','📋 Pedidos'],['dishes','🍔 Platos'],['set','⚙️ Ajustes']].map(([k,v])=>`<button class="${tab==k?'on':''}" onclick="tab='${k}';draw()">${v}</button>`).join('')}</nav>`;
