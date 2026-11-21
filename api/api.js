@@ -10,6 +10,8 @@ const init = () => (ready ||= (async () => {
   await sql`alter table orders add column if not exists discount numeric(10,2) default 0`;
   await sql`alter table orders add column if not exists updated_at timestamptz default now()`;
   await sql`alter table orders add column if not exists public_id text`;
+  await sql`alter table orders add column if not exists payment_status text default 'pending'`;
+  await sql`alter table orders add column if not exists payment_proof text default ''`;
   await sql`update orders set public_id='PED-'||to_char(created at time zone 'America/Sao_Paulo','YYYYMMDD')||'-'||upper(substr(md5(random()::text||id::text),1,6)) where public_id is null`;
   await sql`create unique index if not exists orders_public_id_uidx on orders(public_id)`;
   await sql`alter table orders add column if not exists courier_id integer`;
@@ -30,16 +32,23 @@ export default async function handler(req, res) {
     const a = req.query.a, b = req.body || {};
     const admin = !!process.env.ADMIN_PASSWORD && req.headers['x-admin'] === process.env.ADMIN_PASSWORD;
     const deny = () => res.status(401).json({ error: 'No autorizado' });
+    if (a === 'paymentproof' && req.method === 'POST') {
+      const id=Number(b.id),phone=String(b.phone||'').replace(/\\D/g,'');const proof=String(b.proof||'');
+      if(!Number.isInteger(id)||id<1||phone.length<8)return res.status(400).json({error:'Pedido o WhatsApp inválido'});
+      if(!/^data:image\\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(proof)||proof.length>1900000)return res.status(400).json({error:'Envía JPG, PNG o WEBP de máximo 1,3 MB'});
+      const rows=await sql`update orders set payment_proof=${proof},payment_status='review',updated_at=now() where id=${id} and regexp_replace(phone,'[^0-9]','','g')=${phone} and pay='pix' and payment_status<>'paid' returning id,payment_status`;
+      if(!rows.length)return res.status(404).json({error:'No encontramos el pedido o ya fue pagado'});return res.json({ok:1,payment_status:rows[0].payment_status});
+    }
     if (a === 'myorders') {
       const phone = String(req.query.phone || '').replace(/\\D/g, '');
       if (phone.length < 8) return res.status(400).json({error:'WhatsApp inválido'});
-      const rows = await sql`select id,status,created,updated_at,type,total,items,address from orders where regexp_replace(phone,'[^0-9]','','g')=${phone} order by created desc limit 50`;
+      const rows = await sql`select id,public_id,status,created,updated_at,type,total,items,address,pay,payment_status from orders where regexp_replace(phone,'[^0-9]','','g')=${phone} order by created desc limit 50`;
       return res.json(rows);
     }
     if (a === 'track') {
       const id = Number(req.query.id), phone = String(req.query.phone || '').replace(/\\D/g, '');
       if (!Number.isInteger(id) || id < 1 || phone.length < 8) return res.status(400).json({error:'Número de pedido o WhatsApp inválido'});
-      const [o] = await sql`select o.id,o.status,o.created,o.updated_at,o.type,o.total,o.items,o.address,c.name as courier_name,c.phone as courier_phone from orders o left join couriers c on c.id=o.courier_id where o.id=${id} and regexp_replace(o.phone,'[^0-9]','','g')=${phone} limit 1`;
+      const [o] = await sql`select o.id,o.public_id,o.status,o.created,o.updated_at,o.type,o.total,o.items,o.address,o.payment_status,o.pay,c.name as courier_name,c.phone as courier_phone from orders o left join couriers c on c.id=o.courier_id where o.id=${id} and regexp_replace(o.phone,'[^0-9]','','g')=${phone} limit 1`;
       if (!o) return res.status(404).json({error:'No encontramos ese pedido con ese WhatsApp'});
       return res.json(o);
     }
@@ -87,7 +96,7 @@ export default async function handler(req, res) {
       }
       const addr = b.type === 'local' ? 'Mesa ' + (b.table || '?') : b.address || '';
       const publicId = 'PED-' + new Date().toLocaleDateString('en-CA',{timeZone:'America/Sao_Paulo'}).replace(/-/g,'') + '-' + Math.random().toString(36).slice(2,8).toUpperCase();
-      const [o] = await sql`insert into orders(public_id,name,phone,type,address,pay,items,total,fee,promo_code,discount,delivery_lat,delivery_lng) values(${publicId},${String(b.name).slice(0, 80)},${String(b.phone).slice(0, 30)},${b.type},${String(addr).slice(0, 250)},${String(b.pay || 'pix').slice(0, 20)},${JSON.stringify(items)},${sub - discount + fee},${fee},${promoCode},${discount},${b.type==='delivery'&&b.lat!==null&&b.lat!==undefined&&Number.isFinite(Number(b.lat))?Number(b.lat):null},${b.type==='delivery'&&b.lng!==null&&b.lng!==undefined&&Number.isFinite(Number(b.lng))?Number(b.lng):null}) returning id,public_id,total,discount,promo_code`;
+      const [o] = await sql`insert into orders(public_id,name,phone,type,address,pay,items,total,fee,promo_code,discount,delivery_lat,delivery_lng,payment_status) values(${publicId},${String(b.name).slice(0, 80)},${String(b.phone).slice(0, 30)},${b.type},${String(addr).slice(0, 250)},${String(b.pay || 'pix').slice(0, 20)},${JSON.stringify(items)},${sub - discount + fee},${fee},${promoCode},${discount},${b.type==='delivery'&&b.lat!==null&&b.lat!==undefined&&Number.isFinite(Number(b.lat))?Number(b.lat):null},${b.type==='delivery'&&b.lng!==null&&b.lng!==undefined&&Number.isFinite(Number(b.lng))?Number(b.lng):null},'pending') returning id,public_id,total,discount,promo_code,payment_status`;
       return res.json(o);
     }
     if (a === 'checkpromo' && req.method === 'POST') {
@@ -132,9 +141,14 @@ export default async function handler(req, res) {
       const end = endDate.toISOString();
       return res.json(await sql`select * from orders where created >= ${start}::timestamptz and created < ${end}::timestamptz and status in ('entregado','cancelado') order by created desc`);
     }
+    if (a === 'paymentstatus' && req.method === 'POST') {
+      const id=Number(b.id),status=String(b.payment_status||'');if(!Number.isInteger(id)||id<1||!['paid','unpaid','pending'].includes(status))return res.status(400).json({error:'Estado de pago inválido'});
+      const rows=await sql`update orders set payment_status=${status},updated_at=now() where id=${id} returning id,payment_status`;if(!rows.length)return res.status(404).json({error:'Pedido no encontrado'});return res.json({ok:1,order:rows[0]});
+    }
     if (a === 'status') {
       const allowed = ['nuevo','confirmado','preparando','listo','en camino','entregado','cancelado'];
       if (!Number.isInteger(+b.id) || +b.id < 1 || !allowed.includes(b.status)) return res.status(400).json({ error: 'Estado o pedido inválido' });
+      if(['confirmado','preparando','listo','en camino','entregado'].includes(b.status)){const [payment]=await sql`select payment_status from orders where id=${+b.id}`;if(!payment)return res.status(404).json({error:'Pedido no encontrado'});if(payment.payment_status!=='paid')return res.status(400).json({error:'Primero confirma el pago del pedido'});}
       const rows = await sql`update orders set status=${b.status},updated_at=now() where id=${+b.id} returning id,status,updated_at`;
       if (!rows.length) return res.status(404).json({ error: 'Pedido no encontrado' });
       return res.json({ ok: 1, order: rows[0] });
